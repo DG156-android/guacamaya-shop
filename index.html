@@ -546,7 +546,10 @@
     <span id="toastMessage">Acción completada</span>
   </div>
 
-  <!-- Lógica Principal de la Aplicación -->
-  <script src="app.js"></script>
+  <script>
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js');
+  }
+</script>
 </body>
 </html>

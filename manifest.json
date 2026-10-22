@@ -1,19 +1,21 @@
 {
-  "name": "GUACAMAYA SHOP",
-  "short_name": "GUACAMAYA SHOP",
-  "description": "Gestión de mercado por tiendas (D1, Ara, Salsamentaria) con conversión COP/USD en tiempo real y exportación a PDF.",
-  "lang": "es-CO",
+  "name": "Guacamaya Shop",
+  "short_name": "Guacamaya",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
-  "orientation": "portrait",
   "background_color": "#1D3B58",
   "theme_color": "#1D3B58",
-  "categories": ["finance", "shopping", "utilities"],
+  "orientation": "portrait",
   "icons": [
     {
-      "src": "LOGO.png",
-      "sizes": "192x192 512x512",
+      "src": "./logo.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "./logo.png",
+      "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
     }

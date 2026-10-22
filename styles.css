@@ -1,0 +1,395 @@
+/* ==========================================================================
+   Guacamaya Shop (MercaCuentas) — Hoja de Estilos Mobile-First (styles.css)
+   Identidad Guacamaya Shop + Safe Areas iOS/Android + Tarjetas Móviles
+   ========================================================================== */
+
+:root {
+  /* Safe Areas para iPhone (Notch / Dynamic Island) y Android */
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+
+  /* Paleta Oficial Guacamaya Shop */
+  --bg-ice: #F4F8FA;
+  --navy-primary: #1D3B58;
+  --navy-dark: #13283D;
+  --sky-accent: #38B6FF;
+  --cta-red: #E63946;
+  --cta-red-dark: #C82331;
+  --gold-highlight: #FFB703;
+  --foliage-green: #588157;
+  --bought-green: #2B9348;
+
+  /* Tipografías */
+  --font-display: 'Fredoka', 'Nunito', system-ui, -apple-system, sans-serif;
+  --font-sans: 'Plus Jakarta Sans', 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+/* 1. Comportamiento Nativo del Lienzo y Prevención de Rebote Elástico */
+html,
+body {
+  overscroll-behavior-y: none;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  background-color: var(--bg-ice);
+  background-image: linear-gradient(180deg, #E8F2F8 0%, var(--bg-ice) 45%, #EDF4F8 100%);
+  font-family: var(--font-sans);
+  color: #1A2B3C;
+}
+
+.font-display {
+  font-family: var(--font-display);
+}
+
+/* Permitir selección únicamente en campos de entrada */
+input,
+select,
+textarea {
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+/* 2. Cabecera Vibrante con Patrón de Hojas Tropicales y Safe-Area Superior */
+.guacamaya-header {
+  background-color: var(--navy-primary);
+  background-image:
+    radial-gradient(circle at 88% 18%, rgba(88, 129, 87, 0.28) 0%, transparent 48%),
+    radial-gradient(circle at 10% 85%, rgba(56, 182, 255, 0.16) 0%, transparent 45%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='160' viewBox='0 0 220 160'%3E%3Cg fill='%23588157' fill-opacity='0.22'%3E%3Cpath d='M-10 20 C30 -10, 75 15, 85 60 C45 65, 10 50, -10 20 Z'/%3E%3Cpath d='M150 -10 C180 20, 210 15, 230 -5 C215 35, 175 45, 140 25 Z'/%3E%3Cpath d='M165 85 C195 65, 225 80, 235 120 C195 130, 170 115, 165 85 Z'/%3E%3C/g%3E%3Cg fill='%2338B6FF' fill-opacity='0.1'%3E%3Cpath d='M95 -15 C115 15, 105 45, 75 60 C65 30, 75 0, 95 -15 Z'/%3E%3Cpath d='M10 95 C45 85, 70 110, 65 145 C30 140, 10 120, 10 95 Z'/%3E%3C/g%3E%3C/svg%3E");
+  background-size: cover, cover, 210px 150px;
+  padding-top: calc(0.9rem + var(--safe-top));
+  padding-left: calc(1rem + var(--safe-left));
+  padding-right: calc(1rem + var(--safe-right));
+  padding-bottom: 1.9rem;
+  border-bottom-left-radius: 28px;
+  border-bottom-right-radius: 28px;
+  box-shadow: 0 8px 24px rgba(19, 40, 61, 0.22);
+}
+
+.safe-main {
+  margin-top: -1.15rem;
+  position: relative;
+  z-index: 20;
+  padding-left: calc(0.9rem + var(--safe-left));
+  padding-right: calc(0.9rem + var(--safe-right));
+  /* Espacio inferior amplio para que la barra fija nunca tape el último ítem */
+  padding-bottom: calc(7.5rem + var(--safe-bottom));
+}
+
+/* 3. Barra Inferior Fija en Azul Marino Degradado con Safe-Area */
+.safe-bottom-bar {
+  background: linear-gradient(180deg, #1E4060 0%, var(--navy-primary) 50%, var(--navy-dark) 100%);
+  padding-top: 0.85rem;
+  padding-bottom: calc(0.85rem + var(--safe-bottom));
+  padding-left: calc(1rem + var(--safe-left));
+  padding-right: calc(1rem + var(--safe-right));
+  border-top-left-radius: 24px;
+  border-top-right-radius: 24px;
+  box-shadow: 0 -8px 26px rgba(19, 40, 61, 0.3);
+  border-top: 1px solid rgba(255, 255, 255, 0.14);
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s ease;
+}
+
+/* Cuando el teclado virtual se despliega en móvil, oculta suavemente la barra fija inferior */
+body.keyboard-open .safe-bottom-bar {
+  transform: translateY(110%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* 4. Tarjetas Elevadas, Inputs con Acento Azul Cielo (#38B6FF) y Botones */
+.guacamaya-card {
+  background: linear-gradient(180deg, #EAF3F9 0%, #FFFFFF 36%, #FFFFFF 100%);
+  border-radius: 24px;
+  box-shadow: 0 8px 24px rgba(29, 59, 88, 0.08), 0 2px 6px rgba(0, 0, 0, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.9);
+}
+
+.guacamaya-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  background: #FFFFFF;
+  border: 1.6px solid #C6D6E4;
+  border-radius: 999px;
+  padding: 0.15rem 0.9rem;
+  min-height: 46px;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.02);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease;
+}
+
+.guacamaya-input-wrap:focus-within {
+  border-color: var(--sky-accent);
+  box-shadow: 0 0 0 3.5px rgba(56, 182, 255, 0.22);
+  transform: translateY(-1px);
+}
+
+.guacamaya-input-icon {
+  color: #64748B;
+  flex-shrink: 0;
+  transition: color 0.2s ease;
+}
+
+.guacamaya-input-wrap:focus-within .guacamaya-input-icon {
+  color: var(--sky-accent);
+}
+
+/* Botón Principal CTA en Rojo Vibrante (#E63946) con degradado */
+.btn-guacamaya-cta {
+  background: linear-gradient(180deg, #F44654 0%, var(--cta-red) 55%, var(--cta-red-dark) 100%);
+  color: #FFFFFF;
+  font-family: var(--font-display);
+  border-radius: 999px;
+  box-shadow: 0 6px 16px rgba(230, 57, 70, 0.36), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.18s ease;
+}
+
+.btn-guacamaya-cta:hover {
+  box-shadow: 0 8px 20px rgba(230, 57, 70, 0.45);
+}
+
+.btn-guacamaya-cta:active {
+  transform: scale(0.97);
+}
+
+.btn-guacamaya-cta.is-editing {
+  background: linear-gradient(180deg, #FFC42E 0%, var(--gold-highlight) 100%);
+  color: #142433;
+  box-shadow: 0 6px 16px rgba(255, 183, 3, 0.35);
+}
+
+/* Botón Exportar PDF en Amarillo Dorado (#FFB703) */
+.btn-guacamaya-gold {
+  background: linear-gradient(180deg, #FFC635 0%, var(--gold-highlight) 100%);
+  color: #142433;
+  border-radius: 999px;
+  font-weight: 800;
+  box-shadow: 0 4px 14px rgba(255, 183, 3, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.45);
+  transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.18s ease;
+}
+
+.btn-guacamaya-gold:hover {
+  filter: brightness(1.03);
+}
+
+.btn-guacamaya-gold:active {
+  transform: scale(0.95);
+}
+
+/* Prevención del Zoom Automático en Safari iOS (mínimo 16px en móvil) */
+@media (max-width: 639px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
+/* Tamaño Táctil Mínimo de 44x44px */
+.touch-target {
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 5. Lista de Compras: Tarjetas Animadas en Móvil (< 640px) y Tabla Moderna en Desktop */
+.badge-bought-pill {
+  background: linear-gradient(135deg, var(--bought-green) 0%, var(--foliage-green) 100%);
+  color: #FFFFFF;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.22rem 0.7rem;
+  border-radius: 999px;
+  box-shadow: 0 2px 6px rgba(43, 147, 72, 0.25);
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+
+.badge-bought-pill.is-pending {
+  background: #E8F0F6;
+  color: #5B7083;
+  box-shadow: none;
+}
+
+.badge-bought-pill:active {
+  transform: scale(0.93);
+}
+
+/* Botones de acción de tarjeta estilo Guacamaya Shop */
+.btn-card-edit {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.38rem 0.85rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--navy-primary);
+  background: #F5FAFD;
+  border: 1.5px solid #4A789C;
+  transition: transform 0.15s ease, background-color 0.15s ease;
+}
+
+.btn-card-edit:hover {
+  background: #E6F2FA;
+}
+
+.btn-card-edit:active {
+  transform: scale(0.94);
+}
+
+.btn-card-delete {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.38rem 0.85rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #D64045;
+  background: #FFF8F8;
+  border: 1.5px solid #E58C8A;
+  transition: transform 0.15s ease, background-color 0.15s ease;
+}
+
+.btn-card-delete:hover {
+  background: #FFEBEB;
+}
+
+.btn-card-delete:active {
+  transform: scale(0.94);
+}
+
+@keyframes cardPopIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (max-width: 639px) {
+  .responsive-table thead {
+    display: none;
+  }
+
+  .responsive-table,
+  .responsive-table tbody {
+    display: block;
+    width: 100%;
+  }
+
+  .responsive-table tr.item-row {
+    position: relative;
+    display: grid;
+    grid-template-columns: 64px 1fr;
+    gap: 0.2rem 0.85rem;
+    background: #FFFFFF;
+    border: 1.5px solid rgba(255, 255, 255, 0.95);
+    border-radius: 22px;
+    padding: 0.9rem 0.95rem;
+    margin-bottom: 0.8rem;
+    box-shadow: 0 6px 18px rgba(29, 59, 88, 0.07), 0 2px 5px rgba(0, 0, 0, 0.03);
+    animation: cardPopIn 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .responsive-table tr.item-row.is-bought-row {
+    border-color: rgba(88, 129, 87, 0.32);
+    background: linear-gradient(180deg, #FFFFFF 0%, #F7FBF7 100%);
+  }
+
+  .responsive-table tr.item-row:last-child {
+    margin-bottom: 0;
+  }
+
+  .responsive-table td {
+    padding: 0 !important;
+    border: none !important;
+  }
+
+  /* Ilustración temática a la izquierda de la tarjeta móvil */
+  .responsive-table td[data-cell="store"] {
+    grid-column: 1 / 2;
+    grid-row: 1 / 5;
+    align-self: center;
+  }
+
+  /* Nombre "Tienda - Producto" y badge "comprado" */
+  .responsive-table td[data-cell="product"] {
+    grid-column: 2 / 3;
+    grid-row: 1;
+    padding-right: 4.8rem !important;
+  }
+
+  /* Subtotal destacado */
+  .responsive-table td[data-cell="subtotal"] {
+    grid-column: 2 / 3;
+    grid-row: 2;
+    text-align: left !important;
+    font-size: 0.92rem;
+    color: var(--navy-primary);
+    margin-top: 0.1rem;
+  }
+
+  /* Precio unitario y cantidad */
+  .responsive-table td[data-cell="price"],
+  .responsive-table td[data-cell="qty"] {
+    display: inline-block;
+    font-size: 0.76rem;
+    color: #64748B;
+  }
+
+  .responsive-table td[data-cell="price"] {
+    grid-column: 2 / 3;
+    grid-row: 3;
+    text-align: left !important;
+  }
+
+  .responsive-table td[data-cell="qty"] {
+    display: none; /* Se muestra integrado junto al precio unitario en móvil */
+  }
+
+  /* Botones Editar y Eliminar redondeados */
+  .responsive-table td[data-cell="actions"] {
+    grid-column: 2 / 3;
+    grid-row: 4;
+    text-align: left !important;
+    margin-top: 0.45rem;
+  }
+}
+
+/* Ocultar flechas nativas en inputs numéricos */
+input[type=number]::-webkit-inner-spin-button,
+input[type=number]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  appearance: none;
+  margin: 0;
+}
+
+input[type=number] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+/* Scrollbar estilizada */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: #f4f8fa;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+}

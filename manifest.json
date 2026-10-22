@@ -1,0 +1,32 @@
+{
+  "id": "com.guacamayashop.app",
+  "name": "Guacamaya Shop",
+  "short_name": "Guacamaya",
+  "description": "Control y lista de mercado con cálculo de cuentas y divisas",
+  "start_url": "https://dg156-android.github.io/guacamaya-shop/index.html",
+  "scope": "https://dg156-android.github.io/guacamaya-shop/",
+  "display": "standalone",
+  "background_color": "#1D3B58",
+  "theme_color": "#1D3B58",
+  "orientation": "portrait",
+  "categories": ["shopping", "finance", "utilities"],
+  "icons": [
+    {
+      "src": "https://dg156-android.github.io/guacamaya-shop/logo.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://dg156-android.github.io/guacamaya-shop/logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "https://dg156-android.github.io/guacamaya-shop/logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

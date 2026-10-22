@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <!-- 1. Viewport Nativo Universal con viewport-fit=cover para Notch y Dynamic Island -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+
+  <!-- Configuración Universal PWA para iOS y Android con tema Guacamaya Shop (#1D3B58) -->
+  <meta name="theme-color" content="#1D3B58" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="GUACAMAYA SHOP" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" type="image/png" href="favicon.png" />
+  <link rel="apple-touch-icon" href="logo.png" />
+
+  <title>GUACAMAYA SHOP</title>
+
+  <!-- Tailwind CSS via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./sw.js')
+        .then(reg => console.log('Service Worker activo'))
+        .catch(err => console.error('Error SW:', err));
+    });
+  }
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Plus Jakarta Sans', 'Inter', 'system-ui', '-apple-system', 'sans-serif'],
+            display: ['Fredoka', 'Nunito', 'system-ui', 'sans-serif']
+          },
+          colors: {
+            guacamaya: {
+              ice: '#F4F8FA',
+              navy: '#1D3B58',
+              navydark: '#13283D',
+              sky: '#38B6FF',
+              red: '#E63946',
+              gold: '#FFB703',
+              foliage: '#588157',
+              bought: '#2B9348'
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Google Fonts: Fredoka (Títulos amigables) & Plus Jakarta Sans (Datos y UI) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+
+  <!-- Hoja de Estilos Guacamaya Shop -->
+  <link rel="stylesheet" href="styles.css" />
+
+  <!-- jsPDF & jsPDF-AutoTable via CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+</head>
+<body class="min-h-screen font-sans antialiased selection:bg-[#38B6FF] selection:text-white">
+
+  <!-- 1. CABECERA VIBRANTE (HEADER) CON PATRÓN DE HOJAS Y LOGO GUACAMAYA -->
+  <header class="sticky top-0 z-30 text-white guacamaya-header">
+    <div class="max-w-5xl mx-auto flex items-center justify-between gap-2">
+      <!-- Logo Circular Oficial Transparente (LOGO.png) + Nombre -->
+      <div class="flex items-center gap-3">
+        <div class="w-14 h-14 sm:w-16 sm:h-16 rounded-full ring-2 ring-white/90 shadow-lg overflow-hidden shrink-0 flex items-center justify-center">
+          <img
+          src="logo.png"
+          alt="Logo Guacamaya Shop"
+          class="w-full h-full object-contain rounded-full select-none"
+/>
+        </div>
+        <div>
+          <h1 class="font-display text-2xl sm:text-3xl font-bold tracking-wide leading-none drop-shadow">
+            Guacamaya<br class="sm:hidden" /> Shop
+          </h1>
+          <p class="text-[11px] text-sky-200/90 font-semibold mt-0.5 hidden sm:block">
+            MercaCuentas &bull; Control de Mercado por Tiendas (COP / USD)
+          </p>
+        </div>
+      </div>
+
+      <!-- Píldora Redondeada de TRM en Tiempo Real -->
+      <div class="flex items-center gap-1.5 bg-white text-[#1D3B58] rounded-full pl-3.5 pr-1.5 py-1 shadow-md">
+        <div class="text-right">
+          <div class="flex items-center justify-end gap-1">
+            <span id="trmStatusDot" class="w-2 h-2 rounded-full bg-[#2B9348] animate-pulse"></span>
+            <span class="text-[10px] uppercase tracking-wider font-extrabold text-[#1D3B58]/70">TRM</span>
+          </div>
+          <p id="trmDisplay" class="text-xs sm:text-sm font-extrabold text-[#1D3B58] leading-tight">Cargando...</p>
+        </div>
+        <button
+          id="btnRefreshTrm"
+          type="button"
+          title="Actualizar tasa de cambio"
+          class="w-8 h-8 rounded-full bg-[#F4F8FA] hover:bg-[#38B6FF]/20 active:scale-95 text-[#1D3B58] flex items-center justify-center transition"
+        >
+          <svg id="iconRefreshTrm" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- CONTENIDO PRINCIPAL -->
+  <main class="max-w-5xl mx-auto space-y-4 sm:space-y-5 safe-main">
+
+    <!-- Tarjetas de Resumen (Visibles en Tablet/Desktop; en móvil van en la barra fija inferior) -->
+    <section class="hidden sm:grid sm:grid-cols-3 gap-3.5 pt-2">
+      <!-- Total en Pesos Colombianos -->
+      <div class="bg-white rounded-3xl p-4 shadow-sm border border-sky-100 flex flex-col justify-between">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Total Estimado (COP)</span>
+          <span class="text-xs font-bold px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">CO$</span>
+        </div>
+        <p id="totalCopDisplay" class="font-display text-2xl sm:text-3xl font-bold text-[#1D3B58] mt-2">$0 COP</p>
+        <p id="itemsCountDisplay" class="text-xs font-semibold text-slate-500 mt-1">0 productos en la lista</p>
+      </div>
+
+      <!-- Total en Dólares (USD) -->
+      <div class="bg-gradient-to-br from-[#1D3B58] to-[#13283D] text-white rounded-3xl p-4 shadow-sm flex flex-col justify-between">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-bold uppercase tracking-wider text-sky-200">Equivalente en USD</span>
+          <span class="text-xs font-bold px-2.5 py-0.5 rounded-full bg-[#38B6FF]/20 text-[#38B6FF] border border-[#38B6FF]/30">US$</span>
+        </div>
+        <p id="totalUsdDisplay" class="font-display text-2xl sm:text-3xl font-bold text-[#FFB703] mt-2">$0.00 USD</p>
+        <p id="trmUpdatedTime" class="text-[11px] text-sky-100/80 mt-1">Actualizando tasa...</p>
+      </div>
+
+      <!-- Acciones Rápidas / Exportar PDF -->
+      <div class="bg-white rounded-3xl p-4 shadow-sm border border-sky-100 flex flex-col justify-between gap-3">
+        <div>
+          <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Exportar y Compartir</span>
+          <p class="text-xs text-slate-500 mt-1">Descarga el reporte detallado con desglose en COP y USD.</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <button
+            id="btnExportPdf"
+            type="button"
+            class="touch-target flex-1 gap-2 btn-guacamaya-gold text-sm px-4 py-2.5 disabled:opacity-40 disabled:pointer-events-none"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+              <polyline points="14 2 14 8 20 8" />
+            </svg>
+            Exportar PDF
+          </button>
+          <button
+            id="btnClearAll"
+            type="button"
+            title="Vaciar toda la lista"
+            class="touch-target rounded-full border border-rose-200 text-[#E63946] hover:bg-rose-50 active:scale-95 transition disabled:opacity-40 disabled:pointer-events-none"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. TARJETA DE ENTRADA DINÁMICA ("Agregar ítem") CON FUNCIONALIDAD COMPLETA -->
+    <section class="guacamaya-card p-4 sm:p-5">
+      <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+        <div class="flex items-center gap-2">
+          <h2 id="formTitle" class="font-display text-xl font-bold text-[#1D3B58] flex items-center gap-2">
+            <span id="formBadge" class="w-2.5 h-2.5 rounded-full bg-[#38B6FF]"></span>
+            Agregar ítem
+          </h2>
+          <span id="catalogCountBadge" class="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-[#1D3B58]/10 text-[#1D3B58]">
+            Catálogo activo
+          </span>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <button
+            id="btnCancelEdit"
+            type="button"
+            class="hidden text-xs font-bold text-[#E63946] hover:underline py-1.5 px-2"
+          >
+            Cancelar edición
+          </button>
+          <!-- Botón para abrir el Apartado de Edición de Precios por Tienda -->
+          <button
+            id="btnTogglePriceManager"
+            type="button"
+            class="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-full bg-[#1D3B58]/10 text-[#1D3B58] hover:bg-[#1D3B58]/15 border border-[#1D3B58]/20 transition"
+          >
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+            </svg>
+            <span id="btnTogglePriceManagerText">Editar Precios por Tienda</span>
+          </button>
+        </div>
+      </div>
+
+      <form id="productForm" class="grid grid-cols-2 sm:grid-cols-12 gap-2.5 sm:gap-3" autocomplete="off">
+        <input type="hidden" id="editItemId" value="" />
+
+        <!-- Lugar / Tienda (D1, Ara, Salsamentaria) con icono de pin -->
+        <div class="col-span-2 sm:col-span-3">
+          <div class="guacamaya-input-wrap relative">
+            <span class="guacamaya-input-icon" aria-hidden="true">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+            </span>
+            <select
+              id="inputStore"
+              required
+              aria-label="Lugar o tienda"
+              class="w-full appearance-none bg-transparent pr-6 py-2 text-base sm:text-sm font-bold text-[#1D3B58] outline-none cursor-pointer"
+            >
+              <option value="D1">Lugar: D1</option>
+              <option value="Ara">Lugar: Ara</option>
+              <option value="Salsamentaria">Lugar: Salsamentaria</option>
+            </select>
+            <svg class="w-4 h-4 text-slate-400 pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+            </svg>
+          </div>
+        </div>
+
+        <!-- Nombre del Producto con menú desplegable por tienda e icono de bolsa -->
+        <div class="col-span-2 sm:col-span-4 relative" id="productDropdownWrapper">
+          <div class="guacamaya-input-wrap relative pr-10">
+            <span class="guacamaya-input-icon" aria-hidden="true">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+              </svg>
+            </span>
+            <input
+              id="inputProduct"
+              type="text"
+              required
+              placeholder="Producto (elige o escribe...)"
+              class="w-full bg-transparent py-2 text-base sm:text-sm font-semibold text-slate-800 placeholder:text-slate-400 placeholder:font-medium outline-none"
+            />
+            <span id="activeStoreCatalogHint" class="hidden sm:inline-block text-[10px] text-[#588157] font-bold whitespace-nowrap mr-1">
+              Menú D1
+            </span>
+            <button
+              id="btnToggleCatalog"
+              type="button"
+              tabindex="-1"
+              title="Ver productos de esta tienda"
+              class="w-9 h-9 absolute right-1 top-1/2 -translate-y-1/2 text-slate-400 hover:text-[#1D3B58] rounded-full flex items-center justify-center transition"
+            >
+              <svg id="catalogChevron" class="w-4 h-4 transition-transform duration-200" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+          </div>
+
+          <!-- Menú Desplegable de Productos (Filtrado por la tienda seleccionada) -->
+          <div
+            id="productCatalogMenu"
+            class="hidden absolute left-0 right-0 top-full mt-2 z-40 bg-white rounded-3xl shadow-2xl border border-sky-100 overflow-hidden"
+          >
+            <div class="px-4 py-2.5 bg-[#F4F8FA] border-b border-slate-100 flex items-center justify-between">
+              <span id="dropdownHeaderTitle" class="text-[11px] font-extrabold text-[#1D3B58] uppercase tracking-wider">
+                PRODUCTOS DE D1
+              </span>
+              <button
+                id="btnOpenManagerFromDropdown"
+                type="button"
+                class="text-xs text-[#38B6FF] hover:text-[#1D3B58] font-bold underline py-0.5 px-2"
+              >
+                Editar precios
+              </button>
+            </div>
+            <ul id="productCatalogList" class="max-h-60 overflow-y-auto divide-y divide-slate-100 custom-scrollbar">
+              <!-- Opciones de la tienda activa inyectadas por JS -->
+            </ul>
+          </div>
+        </div>
+
+        <!-- Precio Unitario (COP) con icono de moneda y puntos de miles -->
+        <div class="col-span-1 sm:col-span-3">
+          <div class="guacamaya-input-wrap relative">
+            <span class="guacamaya-input-icon" aria-hidden="true">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="9" />
+                <path stroke-linecap="round" stroke-linejoin="round" d="M14.8 9A2 2 0 0013 8h-2a2 2 0 000 4h2a2 2 0 010 4h-2a2 2 0 01-1.8-1M12 6v2m0 8v2" />
+              </svg>
+            </span>
+            <input
+              id="inputPrice"
+              type="text"
+              inputmode="numeric"
+              pattern="[0-9.]*"
+              required
+              placeholder="Precio (COP)"
+              class="w-full bg-transparent py-2 text-base sm:text-sm font-bold text-slate-900 placeholder:text-slate-400 placeholder:font-medium outline-none"
+            />
+            <span id="priceAutoBadge" class="hidden text-[10px] font-bold text-white bg-[#588157] px-2 py-0.5 rounded-full shrink-0">
+              Auto
+            </span>
+          </div>
+        </div>
+
+        <!-- Cantidad con icono ilustrativo -->
+        <div class="col-span-1 sm:col-span-2">
+          <div class="guacamaya-input-wrap">
+            <span class="guacamaya-input-icon" aria-hidden="true">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <rect x="3" y="4" width="18" height="18" rx="3" />
+                <line x1="16" y1="2" x2="16" y2="6" />
+                <line x1="8" y1="2" x2="8" y2="6" />
+                <line x1="3" y1="10" x2="21" y2="10" />
+              </svg>
+            </span>
+            <input
+              id="inputQty"
+              type="number"
+              inputmode="decimal"
+              min="0.01"
+              step="any"
+              value="1"
+              required
+              placeholder="Cantidad"
+              class="w-full bg-transparent py-2 text-base sm:text-sm font-bold text-slate-900 placeholder:text-slate-400 placeholder:font-medium outline-none"
+            />
+          </div>
+        </div>
+
+        <!-- Botón Grande y Llamativo en Rojo Vibrante (#E63946) -->
+        <div class="col-span-2 sm:col-span-12 pt-1">
+          <button
+            id="btnSubmit"
+            type="submit"
+            class="w-full py-3.5 px-6 btn-guacamaya-cta text-base sm:text-lg font-bold flex items-center justify-center gap-2.5"
+          >
+            <svg id="btnSubmitIcon" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24">
+              <circle cx="9" cy="21" r="1.5" />
+              <circle cx="20" cy="21" r="1.5" />
+              <path stroke-linecap="round" stroke-linejoin="round" d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6" />
+            </svg>
+            <span id="btnSubmitText">¡Agregar a la cesta!</span>
+          </button>
+        </div>
+      </form>
+    </section>
+
+    <!-- APARTADO: Gestor / Editor de Precios Dividido por Tienda (D1, Ara, Salsamentaria) -->
+    <section
+      id="priceManagerSection"
+      class="hidden bg-white rounded-3xl shadow-lg border-2 border-[#38B6FF]/40 p-4 sm:p-5 space-y-4 transition-all"
+    >
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
+        <div>
+          <h3 class="font-display text-lg font-bold text-[#1D3B58] flex items-center gap-2">
+            <svg class="w-5 h-5 text-[#38B6FF]" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+            </svg>
+            Editor de Productos y Precios por Tienda
+          </h3>
+          <p class="text-xs text-slate-500 mt-0.5">
+            Selecciona una tienda abajo para ver, agregar o editar sus productos y precios con punto de miles (<code class="font-bold text-[#1D3B58]">.</code>).
+          </p>
+        </div>
+        <div class="flex items-center gap-2 self-end sm:self-center">
+          <button
+            id="btnResetCatalog"
+            type="button"
+            class="touch-target text-xs font-bold text-slate-600 hover:text-slate-900 px-3.5 rounded-full border border-slate-200 hover:bg-slate-50 transition"
+          >
+            Restaurar de fábrica
+          </button>
+          <button
+            id="btnClosePriceManager"
+            type="button"
+            class="touch-target text-xs font-bold text-white bg-[#1D3B58] hover:bg-[#13283D] px-4 rounded-full transition"
+          >
+            Cerrar editor
+          </button>
+        </div>
+      </div>
+
+      <!-- Pestañas de Tiendas en el Editor (D1 | Ara | Salsamentaria) -->
+      <div id="managerStoreTabs" class="grid grid-cols-3 gap-2 bg-[#F4F8FA] p-1.5 rounded-2xl">
+        <!-- Botones generados por JS -->
+      </div>
+
+      <!-- Mini-formulario para añadir un producto a la tienda seleccionada en el editor -->
+      <form id="catalogAddForm" class="grid grid-cols-1 sm:grid-cols-12 gap-2.5 bg-[#F4F8FA] p-3 rounded-2xl border border-sky-100" autocomplete="off">
+        <div class="sm:col-span-6">
+          <input
+            id="catNewName"
+            type="text"
+            required
+            placeholder="Nuevo producto para esta tienda..."
+            class="w-full min-h-[44px] rounded-full border border-slate-300 bg-white px-4 py-2 text-base sm:text-sm text-slate-900 placeholder:text-slate-400 focus:border-[#38B6FF] outline-none"
+          />
+        </div>
+        <div class="sm:col-span-3 relative">
+          <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm font-bold">$</span>
+          <input
+            id="catNewPrice"
+            type="text"
+            inputmode="numeric"
+            pattern="[0-9.]*"
+            required
+            placeholder="15.000"
+            class="w-full min-h-[44px] rounded-full border border-slate-300 bg-white pl-8 pr-3 py-2 text-base sm:text-sm font-bold text-slate-900 placeholder:text-slate-400 placeholder:font-normal focus:border-[#38B6FF] outline-none"
+          />
+        </div>
+        <div class="sm:col-span-3">
+          <button
+            id="btnAddCatalogToStore"
+            type="submit"
+            class="touch-target w-full h-full gap-1 bg-[#588157] hover:bg-[#2B9348] text-white font-bold text-xs py-2.5 px-4 rounded-full shadow-sm transition"
+          >
+            + Agregar a D1
+          </button>
+        </div>
+      </form>
+
+      <!-- Buscador dentro de la tienda seleccionada -->
+      <div class="relative">
+        <svg class="w-4 h-4 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+        </svg>
+        <input
+          id="inputCatalogSearch"
+          type="search"
+          placeholder="Buscar producto en esta tienda para editar su precio..."
+          class="w-full min-h-[44px] rounded-full border border-slate-200 bg-[#F4F8FA] pl-10 pr-4 py-2 text-base sm:text-sm text-slate-800 placeholder:text-slate-400 focus:bg-white focus:border-[#38B6FF] outline-none"
+        />
+      </div>
+
+      <!-- Lista editable de productos y precios de la tienda activa -->
+      <div class="max-h-80 overflow-y-auto border border-slate-200 rounded-2xl divide-y divide-slate-100 custom-scrollbar" id="catalogManagerList">
+        <!-- Filas editables generadas por JS -->
+      </div>
+    </section>
+
+    <!-- Filtro rápido por tienda / búsqueda en la Lista de Compras -->
+    <section class="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+      <div class="relative flex-1">
+        <svg class="w-4 h-4 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+        </svg>
+        <input
+          id="inputSearch"
+          type="search"
+          placeholder="Filtrar por tienda o producto..."
+          class="w-full min-h-[44px] rounded-full border border-[#C6D6E4] bg-white pl-10 pr-4 py-2 text-base sm:text-sm font-semibold text-slate-800 placeholder:text-slate-400 placeholder:font-normal focus:border-[#38B6FF] outline-none shadow-sm"
+        />
+      </div>
+      <div id="storePillsContainer" class="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
+        <!-- Píldoras dinámicas por tienda -->
+      </div>
+    </section>
+
+    <!-- 3. LISTA DE COMPRAS: TARJETAS ANIMADAS EN MÓVIL / TABLA EN DESKTOP -->
+    <section class="sm:bg-white rounded-3xl sm:shadow-sm sm:border sm:border-sky-100 overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse responsive-table">
+          <thead>
+            <tr class="bg-[#F4F8FA] border-b border-slate-200 text-[11px] font-extrabold uppercase tracking-wider text-[#1D3B58]">
+              <th class="py-3.5 px-4">Lugar</th>
+              <th class="py-3.5 px-4">Producto</th>
+              <th class="py-3.5 px-4 text-right">Precio Unit.</th>
+              <th class="py-3.5 px-4 text-center">Cant.</th>
+              <th class="py-3.5 px-4 text-right">Subtotal</th>
+              <th class="py-3.5 px-4 text-center">Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="itemsTableBody" class="sm:divide-y sm:divide-slate-100 text-sm">
+            <!-- Tarjetas / Filas inyectadas por JS -->
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Estado Vacío -->
+      <div id="emptyState" class="hidden py-12 px-4 text-center bg-white rounded-3xl border border-dashed border-[#C6D6E4] sm:border-none shadow-sm">
+        <div class="w-16 h-16 rounded-full shadow-md overflow-hidden flex items-center justify-center mx-auto mb-3">
+          <img src="LOGO.png" alt="Guacamaya Shop" class="w-full h-full object-contain rounded-full" />
+        </div>
+        <p class="font-display text-lg font-bold text-[#1D3B58]">Tu cesta de mercado está vacía</p>
+        <p class="text-xs font-medium text-slate-500 mt-1">Elige una tienda arriba (D1, Ara o Salsamentaria) y agrega tu primer producto.</p>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- 4. BARRA DE TOTALES Y EXPORTACIÓN FIJA (FOOTER) CON SAFE-AREA -->
+  <footer
+    id="stickyBottomBar"
+    class="fixed bottom-0 left-0 right-0 z-30 text-white safe-bottom-bar"
+  >
+    <div class="max-w-5xl mx-auto flex items-center justify-between gap-3">
+      <!-- A la izquierda: Gran total destacado en Amarillo Dorado (#FFB703) y conversión USD en blanco -->
+      <div class="min-w-0">
+        <div class="flex items-baseline gap-1.5 flex-wrap">
+          <span class="font-display text-lg sm:text-xl font-bold text-white">Total:</span>
+          <span id="bottomTotalCop" class="font-display text-xl sm:text-2xl font-bold text-[#FFB703] tracking-tight truncate">
+            $0 COP
+          </span>
+          <span class="text-[11px] font-bold text-sky-200/90">(<span id="bottomCountDisplay">0</span> ítems)</span>
+        </div>
+        <p id="bottomTotalUsd" class="text-xs sm:text-sm font-semibold text-white/95 pl-1">
+          $0.00 USD
+        </p>
+      </div>
+
+      <!-- A la derecha: Botón llamativo en Amarillo Dorado (#FFB703) Exportar PDF + Vaciar -->
+      <div class="flex items-center gap-2 shrink-0">
+        <button
+          id="btnBottomExportPdf"
+          type="button"
+          class="touch-target gap-2 btn-guacamaya-gold text-xs sm:text-sm px-4 py-2.5 disabled:opacity-40 disabled:pointer-events-none"
+        >
+          <svg class="w-4 h-4 stroke-[#142433]" fill="none" stroke="currentColor" stroke-width="2.3" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+            <polyline points="14 2 14 8 20 8" />
+            <line x1="8" y1="13" x2="16" y2="13" />
+            <line x1="8" y1="17" x2="13" y2="17" />
+          </svg>
+          <span>Exportar PDF</span>
+        </button>
+
+        <button
+          id="btnBottomClearAll"
+          type="button"
+          title="Vaciar toda la lista"
+          class="touch-target rounded-full bg-white/10 hover:bg-[#E63946] text-white border border-white/20 active:scale-95 transition disabled:opacity-40 disabled:pointer-events-none"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+          </svg>
+        </button>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Toast de Notificación -->
+  <div
+    id="toast"
+    class="fixed bottom-24 right-4 z-50 transform translate-y-20 opacity-0 pointer-events-none transition-all duration-300 bg-[#1D3B58] text-white text-xs font-bold px-4 py-3 rounded-full shadow-xl border border-white/20 flex items-center gap-2"
+  >
+    <span id="toastDot" class="w-2.5 h-2.5 rounded-full bg-[#FFB703]"></span>
+    <span id="toastMessage">Acción completada</span>
+  </div>
+
+  <!-- Lógica Principal de la Aplicación -->
+  <script src="app.js"></script>
+</body>
+</html>

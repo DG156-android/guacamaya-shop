@@ -924,8 +924,8 @@
     }
   }
 
-  // --- Exportación a PDF con jsPDF & AutoTable (Identidad Guacamaya Shop) ---
-  function exportToPDF() {
+// --- Exportación a PDF con jsPDF & AutoTable (Identidad Guacamaya Shop + Android Share) ---
+  async function exportToPDF() {
     if (!state.items.length) return;
 
     const { jsPDF } = window.jspdf;
@@ -1008,8 +1008,30 @@
     doc.text(formatUSD(totalUsd), pageWidth - 55, finalY + 46, { align: 'right' });
 
     const fileName = `guacamaya-shop-mercado-${now.toISOString().slice(0, 10)}.pdf`;
-    doc.save(fileName);
-    showToast('📄 PDF generado exitosamente');
+
+    // Soporte nativo para compartir/descargar en Android
+    try {
+      const pdfBlob = doc.output('blob');
+      const file = new File([pdfBlob], fileName, { type: 'application/pdf' });
+
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          files: [file],
+          title: 'Guacamaya Shop',
+          text: `Resumen de compra de mercado (${formattedDate})`
+        });
+        showToast('📄 Reporte compartido');
+      } else {
+        doc.save(fileName);
+        showToast('📄 PDF descargado');
+      }
+    } catch (shareErr) {
+      // Si el usuario cancela la ventana de compartir o no es compatible, recurre a descarga directa
+      if (shareErr.name !== 'AbortError') {
+        doc.save(fileName);
+        showToast('📄 PDF generado');
+      }
+    }
   }
 
   // --- Registro de Eventos ---
@@ -1229,3 +1251,18 @@
 
   document.addEventListener('DOMContentLoaded', init);
 })();
+
+// Generar Blob
+const pdfBlob = doc.output('blob');
+const file = new File([pdfBlob], fileName, { type: 'application/pdf' });
+
+// Si el sistema operativo soporta compartir archivos nativos (Android lo hace):
+if (navigator.canShare && navigator.canShare({ files: [file] })) {
+  navigator.share({
+    files: [file],
+    title: 'Resumen Guacamaya Shop',
+    text: 'Aquí está la lista de mercado en PDF'
+  }).catch((err) => console.log('Compartir cancelado', err));
+} else {
+  doc.save(fileName);
+}

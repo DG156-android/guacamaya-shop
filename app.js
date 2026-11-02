@@ -912,125 +912,170 @@
     showToast('🗑️ Producto eliminado');
   }
 
+let clearConfirmPending = false;
+  let clearConfirmTimer = null;
+
   function clearAllItems() {
-    if (!state.items.length) return;
-    if (confirm('¿Estás seguro de vaciar toda la lista de mercado?')) {
-      state.items = [];
-      state.activeStoreFilter = 'ALL';
-      resetFormMode();
-      saveItemsToStorage();
-      renderAll();
-      showToast('Lista vaciada');
+    if (!state.items.length) {
+      showToast('La lista ya está vacía');
+      return;
     }
+
+    // Confirmación nativa de doble pulsación (evita que Android bloquee el diálogo confirm())
+    if (!clearConfirmPending) {
+      clearConfirmPending = true;
+      showToast('⚠️ Presiona la papelera otra vez para vaciar');
+      clearTimeout(clearConfirmTimer);
+      clearConfirmTimer = setTimeout(() => {
+        clearConfirmPending = false;
+      }, 3500);
+      return;
+    }
+
+    clearConfirmPending = false;
+    clearTimeout(clearConfirmTimer);
+    state.items = [];
+    state.activeStoreFilter = 'ALL';
+    resetFormMode();
+    saveItemsToStorage();
+    renderAll();
+    showToast('🗑️ Toda la lista ha sido vaciada');
   }
 
 // --- Exportación a PDF con jsPDF & AutoTable (Identidad Guacamaya Shop + Android Share) ---
-  async function exportToPDF() {
-    if (!state.items.length) return;
+async function exportToPDF() {
+    if (!state.items.length) {
+      showToast('Agrega productos antes de exportar');
+      return;
+    }
 
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
+    showToast('Generando PDF...');
 
-    const now = new Date();
-    const formattedDate = now.toLocaleDateString('es-CO', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
-    const formattedTime = now.toLocaleTimeString('es-CO', {
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-
-    const { totalCop, totalUsd } = calculateTotals(state.items);
-
-    // Cabecera Azul Marino Guacamaya Shop (#1D3B58)
-    doc.setFillColor(29, 59, 88);
-    doc.rect(0, 0, doc.internal.pageSize.getWidth(), 85, 'F');
-
-    doc.setTextColor(255, 255, 255);
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(19);
-    doc.text('Guacamaya Shop — Resumen de Mercado', 40, 40);
-
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(10);
-    doc.setTextColor(220, 235, 245);
-    doc.text(`Generado el: ${formattedDate} a las ${formattedTime}`, 40, 60);
-    doc.text(`Tasa TRM Aplicada: 1 USD = ${copFormatter.format(state.trm)} COP`, 40, 74);
-
-    const tableRows = state.items.map((item) => [
-      item.store,
-      `${item.product}${item.bought ? ' (Comprado)' : ''}`,
-      copFormatter.format(item.price),
-      String(item.qty),
-      copFormatter.format(item.price * item.qty)
-    ]);
-
-    doc.autoTable({
-      startY: 105,
-      head: [['Lugar', 'Producto', 'Precio Unit.', 'Cantidad', 'Subtotal (COP)']],
-      body: tableRows,
-      theme: 'striped',
-      headStyles: {
-        fillColor: [29, 59, 88],
-        textColor: 255,
-        fontStyle: 'bold',
-        halign: 'left'
-      },
-      columnStyles: {
-        2: { halign: 'right' },
-        3: { halign: 'center' },
-        4: { halign: 'right', fontStyle: 'bold' }
-      },
-      styles: {
-        fontSize: 9.5,
-        cellPadding: 7
-      },
-      margin: { left: 40, right: 40 }
-    });
-
-    const finalY = doc.lastAutoTable.finalY + 20;
-    const pageWidth = doc.internal.pageSize.getWidth();
-
-    doc.setFillColor(29, 59, 88);
-    doc.roundedRect(pageWidth - 260, finalY, 220, 62, 8, 8, 'F');
-
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(11);
-    doc.setTextColor(255, 183, 3);
-    doc.text('TOTAL COP:', pageWidth - 245, finalY + 24);
-    doc.text(formatCOP(totalCop), pageWidth - 55, finalY + 24, { align: 'right' });
-
-    doc.setFontSize(11);
-    doc.setTextColor(255, 255, 255);
-    doc.text('TOTAL USD:', pageWidth - 245, finalY + 46);
-    doc.text(formatUSD(totalUsd), pageWidth - 55, finalY + 46, { align: 'right' });
-
-    const fileName = `guacamaya-shop-mercado-${now.toISOString().slice(0, 10)}.pdf`;
-
-    // Soporte nativo para compartir/descargar en Android
     try {
-      const pdfBlob = doc.output('blob');
-      const file = new File([pdfBlob], fileName, { type: 'application/pdf' });
+      // Verificación de disponibilidad de la librería
+      const jspdfModule = window.jspdf ? window.jspdf.jsPDF : (window.jsPDF || null);
+      if (!jspdfModule) {
+        showToast('Error: Librería jsPDF no disponible');
+        return;
+      }
 
-      if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        await navigator.share({
-          files: [file],
-          title: 'Guacamaya Shop',
-          text: `Resumen de compra de mercado (${formattedDate})`
+      const doc = new jspdfModule({ orientation: 'portrait', unit: 'pt', format: 'a4' });
+
+      const now = new Date();
+      const formattedDate = now.toLocaleDateString('es-CO', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+      const formattedTime = now.toLocaleTimeString('es-CO', {
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+
+      const { totalCop, totalUsd } = calculateTotals(state.items);
+
+      // Cabecera Azul Marino
+      doc.setFillColor(29, 59, 88);
+      doc.rect(0, 0, doc.internal.pageSize.getWidth(), 85, 'F');
+
+      doc.setTextColor(255, 255, 255);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(19);
+      doc.text('Guacamaya Shop — Resumen de Mercado', 40, 40);
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
+      doc.setTextColor(220, 235, 245);
+      doc.text(`Generado el: ${formattedDate} a las ${formattedTime}`, 40, 60);
+      doc.text(`Tasa TRM Aplicada: 1 USD = ${copFormatter.format(state.trm)} COP`, 40, 74);
+
+      const tableRows = state.items.map((item) => [
+        item.store,
+        `${item.product}${item.bought ? ' (Comprado)' : ''}`,
+        copFormatter.format(item.price),
+        String(item.qty),
+        copFormatter.format(item.price * item.qty)
+      ]);
+
+      if (typeof doc.autoTable === 'function') {
+        doc.autoTable({
+          startY: 105,
+          head: [['Lugar', 'Producto', 'Precio Unit.', 'Cantidad', 'Subtotal (COP)']],
+          body: tableRows,
+          theme: 'striped',
+          headStyles: {
+            fillColor: [29, 59, 88],
+            textColor: 255,
+            fontStyle: 'bold',
+            halign: 'left'
+          },
+          columnStyles: {
+            2: { halign: 'right' },
+            3: { halign: 'center' },
+            4: { halign: 'right', fontStyle: 'bold' }
+          },
+          styles: {
+            fontSize: 9.5,
+            cellPadding: 7
+          },
+          margin: { left: 40, right: 40 }
         });
-        showToast('📄 Reporte compartido');
-      } else {
-        doc.save(fileName);
-        showToast('📄 PDF descargado');
       }
-    } catch (shareErr) {
-      // Si el usuario cancela la ventana de compartir o no es compatible, recurre a descarga directa
-      if (shareErr.name !== 'AbortError') {
-        doc.save(fileName);
-        showToast('📄 PDF generado');
+
+      const finalY = (doc.lastAutoTable && doc.lastAutoTable.finalY) ? doc.lastAutoTable.finalY + 20 : 200;
+      const pageWidth = doc.internal.pageSize.getWidth();
+
+      doc.setFillColor(29, 59, 88);
+      doc.roundedRect(pageWidth - 260, finalY, 220, 62, 8, 8, 'F');
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(11);
+      doc.setTextColor(255, 183, 3);
+      doc.text('TOTAL COP:', pageWidth - 245, finalY + 24);
+      doc.text(formatCOP(totalCop), pageWidth - 55, finalY + 24, { align: 'right' });
+
+      doc.setFontSize(11);
+      doc.setTextColor(255, 255, 255);
+      doc.text('TOTAL USD:', pageWidth - 245, finalY + 46);
+      doc.text(formatUSD(totalUsd), pageWidth - 55, finalY + 46, { align: 'right' });
+
+      const fileName = `guacamaya-mercado-${now.toISOString().slice(0, 10)}.pdf`;
+      const pdfBlob = doc.output('blob');
+
+      // Intentar Web Share nativo de Android
+      let sharedSuccessfully = false;
+      if (navigator.share && window.File) {
+        try {
+          const pdfFile = new File([pdfBlob], fileName, { type: 'application/pdf' });
+          if (!navigator.canShare || navigator.canShare({ files: [pdfFile] })) {
+            await navigator.share({
+              files: [pdfFile],
+              title: 'Guacamaya Shop',
+              text: `Lista de mercado (${formattedDate})`
+            });
+            sharedSuccessfully = true;
+            showToast('📄 Reporte compartido');
+          }
+        } catch (shareError) {
+          if (shareError.name === 'AbortError') return; // Cancelado por el usuario
+        }
       }
+
+      // Si no usó Web Share, forzar descarga con enlace blob
+      if (!sharedSuccessfully) {
+        const fileURL = URL.createObjectURL(pdfBlob);
+        const downloadLink = document.createElement('a');
+        downloadLink.href = fileURL;
+        downloadLink.download = fileName;
+        document.body.appendChild(downloadLink);
+        downloadLink.click();
+        document.body.removeChild(downloadLink);
+        setTimeout(() => URL.revokeObjectURL(fileURL), 2000);
+        showToast('📄 PDF guardado');
+      }
+    } catch (err) {
+      console.error('Error al generar PDF:', err);
+      showToast('Error al crear el archivo PDF');
     }
   }
 

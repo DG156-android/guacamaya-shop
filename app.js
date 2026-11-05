@@ -6,10 +6,18 @@
 (() => {
   'use strict';
 
-  // --- 1. ESTADO DE LA APLICACIÓN ---
+  // --- 1. CATÁLOGO BASE PREDETERMINADO ---
+  const DEFAULT_CATALOG = [
+    { store: 'Ara', product: 'Leche Entera 1L', price: 3400, qty: 2, bought: false },
+    { store: 'D1', product: 'Huevos AA x30', price: 16500, qty: 1, bought: false },
+    { store: 'Ara', product: 'Arroz Diana 1kg', price: 4200, qty: 1, bought: false },
+    { store: 'Éxito', product: 'Aceite Vegetal 900ml', price: 9800, qty: 1, bought: false }
+  ];
+
+  // --- 2. ESTADO DE LA APLICACIÓN ---
   const state = {
     items: [],
-    trm: 4200, // Tasa de cambio base por defecto (1 USD = 4.200 COP)
+    trm: 4200, // Tasa de respaldo por defecto
     activeStoreFilter: 'ALL',
     editingItemId: null
   };
@@ -39,13 +47,13 @@
     return usdFormatter.format(amount || 0);
   }
 
-  // --- 2. ELEMENTOS DEL DOM ---
+  // --- 3. ELEMENTOS DEL DOM ---
   const formItem = document.getElementById('formItem');
   const inputStore = document.getElementById('inputStore');
   const inputProduct = document.getElementById('inputProduct');
   const inputPrice = document.getElementById('inputPrice');
   const inputQty = document.getElementById('inputQty');
-  const btnSubmit = document.getElementById('btnSubmit');
+  const btnSubmit = document.getElementById('btnSubmit') || document.querySelector('button[type="submit"]');
   const btnCancelEdit = document.getElementById('btnCancelEdit');
 
   const storeFilterButtons = document.querySelectorAll('.filter-btn');
@@ -60,7 +68,13 @@
   const btnBottomClearAll = document.getElementById('btnBottomClearAll');
   const toastContainer = document.getElementById('toastContainer');
 
-  // --- 3. GESTIÓN DE NOTIFICACIONES TOAST ---
+  // Badge TRM del header
+  const trmBadge = document.getElementById('trmValue') || 
+                   document.getElementById('trmBadge') || 
+                   document.querySelector('.header-trm span') ||
+                   document.querySelector('[id*="trm"]');
+
+  // --- 4. GESTIÓN DE NOTIFICACIONES TOAST ---
   let toastTimeout;
   function showToast(message) {
     if (!toastContainer) return;
@@ -72,20 +86,53 @@
     }, 3200);
   }
 
-  // --- 4. PERSISTENCIA (LOCALSTORAGE) ---
+  // --- 5. CONSULTA DE LA TRM (TIEMPO REAL + OFFLINE) ---
+  async function fetchTRM() {
+    try {
+      // Intentar API pública de TRM Colombia
+      const res = await fetch('https://trm-colombia.response.workers.dev/', { cache: 'no-cache' });
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.valor) {
+          state.trm = Math.round(data.valor);
+          localStorage.setItem(TRM_STORAGE_KEY, state.trm);
+        }
+      }
+    } catch (err) {
+      console.warn('Usando TRM en caché o por defecto:', err);
+      const cachedTRM = localStorage.getItem(TRM_STORAGE_KEY);
+      if (cachedTRM) state.trm = parseFloat(cachedTRM);
+    } finally {
+      // Actualizar la interfaz visual del badge de la TRM
+      if (trmBadge) {
+        trmBadge.textContent = `$${state.trm.toLocaleString('es-CO')} COP`;
+      }
+      updateTotalsDisplay();
+    }
+  }
+
+  // --- 6. PERSISTENCIA (LOCALSTORAGE) ---
   function loadInitialData() {
     try {
       const storedItems = localStorage.getItem(STORAGE_KEY);
       if (storedItems) {
         state.items = JSON.parse(storedItems);
+      } else {
+        // Cargar catálogo inicial por defecto si es primera instalación
+        state.items = DEFAULT_CATALOG.map((item, idx) => ({
+          ...item,
+          id: `${Date.now()}_${idx}`
+        }));
+        saveItemsToStorage();
       }
+
       const storedTrm = localStorage.getItem(TRM_STORAGE_KEY);
       if (storedTrm) {
         state.trm = parseFloat(storedTrm) || 4200;
       }
     } catch (e) {
-      console.error('Error al cargar datos locales:', e);
-      state.items = [];
+      console.error('Error cargando datos locales:', e);
+      state.items = DEFAULT_CATALOG;
     }
   }
 
@@ -93,11 +140,11 @@
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state.items));
     } catch (e) {
-      console.error('Error al guardar datos:', e);
+      console.error('Error guardando datos:', e);
     }
   }
 
-  // --- 5. CÁLCULO DE TOTALES ---
+  // --- 7. CÁLCULO DE TOTALES ---
   function calculateTotals(itemsToSum) {
     const totalCop = itemsToSum.reduce((acc, item) => acc + (item.price * item.qty), 0);
     const totalUsd = state.trm > 0 ? (totalCop / state.trm) : 0;
@@ -123,7 +170,7 @@
     return state.items.filter((i) => i.store.toUpperCase() === state.activeStoreFilter.toUpperCase());
   }
 
-  // --- 6. RENDERIZADO DE LA INTERFAZ ---
+  // --- 8. RENDERIZADO DE LA INTERFAZ ---
   function renderAll() {
     renderList();
     updateTotalsDisplay();
@@ -167,15 +214,14 @@
         </div>
       `;
 
-      // Eventos individuales
       const checkbox = card.querySelector('.item-checkbox');
-      checkbox.addEventListener('change', () => toggleItemBought(item.id));
+      if (checkbox) checkbox.addEventListener('change', () => toggleItemBought(item.id));
 
       const btnEdit = card.querySelector('.btn-edit');
-      btnEdit.addEventListener('click', () => startEditing(item.id));
+      if (btnEdit) btnEdit.addEventListener('click', () => startEditing(item.id));
 
       const btnDelete = card.querySelector('.btn-delete');
-      btnDelete.addEventListener('click', () => deleteSingleItem(item.id));
+      if (btnDelete) btnDelete.addEventListener('click', () => deleteSingleItem(item.id));
 
       itemsContainer.appendChild(card);
     });
@@ -187,7 +233,7 @@
     );
   }
 
-  // --- 7. ACCIONES SOBRE PRODUCTOS ---
+  // --- 9. ACCIONES SOBRE PRODUCTOS ---
   function toggleItemBought(id) {
     const item = state.items.find(i => i.id === id);
     if (item) {
@@ -199,9 +245,7 @@
 
   function deleteSingleItem(id) {
     state.items = state.items.filter(i => i.id !== id);
-    if (state.editingItemId === id) {
-      resetFormMode();
-    }
+    if (state.editingItemId === id) resetFormMode();
     saveItemsToStorage();
     renderAll();
     showToast('Producto eliminado');
@@ -212,25 +256,25 @@
     if (!item) return;
 
     state.editingItemId = id;
-    inputStore.value = item.store;
-    inputProduct.value = item.product;
-    inputPrice.value = item.price;
-    inputQty.value = item.qty;
+    if (inputStore) inputStore.value = item.store;
+    if (inputProduct) inputProduct.value = item.product;
+    if (inputPrice) inputPrice.value = item.price;
+    if (inputQty) inputQty.value = item.qty;
 
-    btnSubmit.textContent = 'Actualizar';
-    btnCancelEdit.style.display = 'inline-block';
-    inputProduct.focus();
+    if (btnSubmit) btnSubmit.textContent = 'Actualizar';
+    if (btnCancelEdit) btnCancelEdit.style.display = 'inline-block';
+    if (inputProduct) inputProduct.focus();
   }
 
   function resetFormMode() {
     state.editingItemId = null;
-    formItem.reset();
-    inputQty.value = '1';
-    btnSubmit.textContent = 'Agregar';
-    btnCancelEdit.style.display = 'none';
+    if (formItem) formItem.reset();
+    if (inputQty) inputQty.value = '1';
+    if (btnSubmit) btnSubmit.textContent = '¡Agregar a la cesta!';
+    if (btnCancelEdit) btnCancelEdit.style.display = 'none';
   }
 
-  // --- 8. VACIAR LISTA (DOBLE PULSACIÓN PARA ANDROID) ---
+  // --- 10. VACIAR LISTA (DOBLE PULSACIÓN PARA ANDROID) ---
   let clearConfirmPending = false;
   let clearConfirmTimer = null;
 
@@ -260,7 +304,7 @@
     showToast('🗑️ Toda la lista ha sido vaciada');
   }
 
-  // --- 9. GENERACIÓN Y EXPORTACIÓN DE PDF ---
+  // --- 11. GENERACIÓN Y EXPORTACIÓN DE PDF ---
   async function exportToPDF() {
     if (!state.items.length) {
       showToast('Agrega productos antes de exportar');
@@ -291,7 +335,7 @@
 
       const { totalCop, totalUsd } = calculateTotals(state.items);
 
-      // Cabecera superior con diseño en azul marino
+      // Cabecera superior
       doc.setFillColor(29, 59, 88);
       doc.rect(0, 0, doc.internal.pageSize.getWidth(), 85, 'F');
 
@@ -349,7 +393,7 @@
 
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(11);
-      doc.setTextColor(255, 183, 3); // Acento dorado/amarillo
+      doc.setTextColor(255, 183, 3);
       doc.text('TOTAL COP:', pageWidth - 245, finalY + 24);
       doc.text(formatCOP(totalCop), pageWidth - 55, finalY + 24, { align: 'right' });
 
@@ -361,7 +405,7 @@
       const fileName = `guacamaya-mercado-${now.toISOString().slice(0, 10)}.pdf`;
       const pdfBlob = doc.output('blob');
 
-      // Estrategia 1: Web Share API de Android (abre el menú para guardar o enviar por WhatsApp)
+      // Web Share API nativo de Android
       let sharedSuccessfully = false;
       if (navigator.share && window.File) {
         try {
@@ -376,11 +420,11 @@
             showToast('📄 Reporte compartido');
           }
         } catch (shareErr) {
-          if (shareErr.name === 'AbortError') return; // Cancelado voluntariamente
+          if (shareErr.name === 'AbortError') return;
         }
       }
 
-      // Estrategia 2: Descarga directa por DataURI si Share no se ejecuta
+      // Descarga por enlace DataURI si no se activó Share
       if (!sharedSuccessfully) {
         const pdfDataUri = doc.output('datauristring');
         const downloadLink = document.createElement('a');
@@ -398,17 +442,16 @@
     }
   }
 
-  // --- 10. EVENT LISTENERS GENERALES ---
+  // --- 12. EVENT LISTENERS GENERALES ---
   function initListeners() {
-    // Formulario de agregar / editar producto
     if (formItem) {
       formItem.addEventListener('submit', (e) => {
         e.preventDefault();
 
-        const store = inputStore.value.trim();
-        const product = inputProduct.value.trim();
-        const price = parseFloat(inputPrice.value) || 0;
-        const qty = parseInt(inputQty.value, 10) || 1;
+        const store = inputStore ? inputStore.value.trim() : 'General';
+        const product = inputProduct ? inputProduct.value.trim() : '';
+        const price = inputPrice ? (parseFloat(inputPrice.value) || 0) : 0;
+        const qty = inputQty ? (parseInt(inputQty.value, 10) || 1) : 1;
 
         if (!product || price <= 0 || qty <= 0) {
           showToast('Ingresa datos válidos');
@@ -435,8 +478,7 @@
             bought: false
           };
           state.items.unshift(newItem);
-          formItem.reset();
-          inputQty.value = '1';
+          resetFormMode();
           showToast('Producto agregado');
         }
 
@@ -449,7 +491,6 @@
       btnCancelEdit.addEventListener('click', resetFormMode);
     }
 
-    // Filtros por tienda
     if (storeFilterButtons) {
       storeFilterButtons.forEach((btn) => {
         btn.addEventListener('click', () => {
@@ -461,7 +502,6 @@
       });
     }
 
-    // Botones de la barra de acciones inferior
     if (btnBottomExportPdf) {
       btnBottomExportPdf.addEventListener('click', exportToPDF);
     }
@@ -471,10 +511,11 @@
     }
   }
 
-  // --- 11. INICIALIZACIÓN ---
+  // --- 13. INICIALIZACIÓN PROTEGIDA ---
   document.addEventListener('DOMContentLoaded', () => {
     loadInitialData();
     initListeners();
     renderAll();
+    fetchTRM(); // Se consulta sin bloquear el renderizado
   });
 })();

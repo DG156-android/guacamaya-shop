@@ -947,7 +947,7 @@
     showToast('🗑️ Toda la lista ha sido vaciada');
   }
 
-  // --- Exportación a PDF con Web Share API y Respaldo DataURI ---
+// --- 9. GENERACIÓN Y EXPORTACIÓN DE PDF MEJORADA ---
   async function exportToPDF() {
     if (!state.items.length) {
       showToast('Agrega productos antes de exportar');
@@ -978,13 +978,13 @@
 
       const { totalCop, totalUsd } = calculateTotals(state.items);
 
-      // Cabecera Azul Marino
+      // Cabecera superior con diseño en azul marino
       doc.setFillColor(29, 59, 88);
       doc.rect(0, 0, doc.internal.pageSize.getWidth(), 85, 'F');
 
       doc.setTextColor(255, 255, 255);
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(19);
+      doc.setFontSize(18);
       doc.text('Guacamaya Shop — Resumen de Mercado', 40, 40);
 
       doc.setFont('helvetica', 'normal');
@@ -993,6 +993,7 @@
       doc.text(`Generado el: ${formattedDate} a las ${formattedTime}`, 40, 60);
       doc.text(`Tasa TRM Aplicada: 1 USD = ${copFormatter.format(state.trm)} COP`, 40, 74);
 
+      // Filas para la tabla
       const tableRows = state.items.map((item) => [
         item.store,
         `${item.product}${item.bought ? ' (Comprado)' : ''}`,
@@ -1004,7 +1005,7 @@
       if (typeof doc.autoTable === 'function') {
         doc.autoTable({
           startY: 105,
-          head: [['Lugar', 'Producto', 'Precio Unit.', 'Cantidad', 'Subtotal (COP)']],
+          head: [['Lugar', 'Producto', 'Precio Unit.', 'Cant.', 'Subtotal (COP)']],
           body: tableRows,
           theme: 'striped',
           headStyles: {
@@ -1029,6 +1030,7 @@
       const finalY = (doc.lastAutoTable && doc.lastAutoTable.finalY) ? doc.lastAutoTable.finalY + 20 : 200;
       const pageWidth = doc.internal.pageSize.getWidth();
 
+      // Tarjeta de total general
       doc.setFillColor(29, 59, 88);
       doc.roundedRect(pageWidth - 260, finalY, 220, 62, 8, 8, 'F');
 
@@ -1046,8 +1048,8 @@
       const fileName = `guacamaya-mercado-${now.toISOString().slice(0, 10)}.pdf`;
       const pdfBlob = doc.output('blob');
 
-      // Intentar Web Share nativo de Android
-      let sharedSuccessfully = false;
+      // --- ESTRATEGIA 1: Web Share API de Android ---
+      let fileShared = false;
       if (navigator.share && window.File) {
         try {
           const pdfFile = new File([pdfBlob], fileName, { type: 'application/pdf' });
@@ -1055,28 +1057,35 @@
             await navigator.share({
               files: [pdfFile],
               title: 'Guacamaya Shop',
-              text: `Lista de mercado (${formattedDate})`
+              text: `Lista de compra (${formattedDate})`
             });
-            sharedSuccessfully = true;
-            showToast('📄 Reporte compartido');
+            fileShared = true;
+            showToast('📄 PDF compartido con éxito');
+            return;
           }
-        } catch (shareError) {
-          if (shareError.name === 'AbortError') return;
+        } catch (shareErr) {
+          if (shareErr.name === 'AbortError') return; // Cancelado por el usuario
+          console.warn('Fallo en navigator.share, pasando a descarga directa:', shareErr);
         }
       }
 
-      // Si no usó Web Share, forzar descarga con enlace DataURI
-      if (!sharedSuccessfully) {
-        const pdfDataUri = doc.output('datauristring');
-        const downloadLink = document.createElement('a');
-        downloadLink.href = pdfDataUri;
-        downloadLink.download = fileName;
-        downloadLink.target = '_blank';
-        document.body.appendChild(downloadLink);
-        downloadLink.click();
+      // --- ESTRATEGIA 2: Forzar Descarga Directa con Octet-Stream ---
+      // Usar octet-stream evita que el WebView de Android lo trate como una vista previa bloqueada
+      const blobUrl = URL.createObjectURL(new Blob([pdfBlob], { type: 'application/octet-stream' }));
+      const downloadLink = document.createElement('a');
+      downloadLink.href = blobUrl;
+      downloadLink.download = fileName;
+      downloadLink.style.display = 'none';
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
+      
+      setTimeout(() => {
         document.body.removeChild(downloadLink);
-        showToast('📄 PDF guardado');
-      }
+        URL.revokeObjectURL(blobUrl);
+      }, 3000);
+
+      showToast('📄 PDF guardado en Descargas');
+
     } catch (err) {
       console.error('Error al generar PDF:', err);
       showToast('Error al crear el archivo PDF');

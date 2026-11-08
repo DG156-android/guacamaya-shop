@@ -9,6 +9,7 @@ const ASSETS_TO_CACHE = [
   './app.js',
   './manifest.json',
   './logo.png',
+  './favicon.png',
   './libs/tailwind.js',
   './libs/jspdf.umd.min.js',
   './libs/jspdf.plugin.autotable.min.js'
@@ -40,9 +41,10 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Network First: busca cambios en GitHub; si no hay red, lee de la caché local
+// Network First para recursos propios; ignora APIs externas (como la TRM)
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
+  if (!event.request.url.startsWith(self.location.origin)) return;
 
   event.respondWith(
     fetch(event.request)

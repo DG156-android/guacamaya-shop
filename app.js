@@ -227,7 +227,7 @@
   }
 
   function formatUSD(value) {
-    return usdFormatter.format(value || 0);
+    return `${usdFormatter.format(value || 0)} USD`;
   }
 
   function showToast(message) {

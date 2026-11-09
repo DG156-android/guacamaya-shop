@@ -395,3 +395,48 @@ input[type=number] {
   background: #cbd5e1;
   border-radius: 9999px;
 }
+
+/* ==========================================================================
+   Impresión Nativa / Guardar como PDF del Sistema (@media print)
+   ========================================================================== */
+@media print {
+  body {
+    background: #FFFFFF !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  header,
+  main,
+  footer,
+  #toast,
+  .no-print {
+    display: none !important;
+  }
+
+  #receiptModal {
+    position: static !important;
+    display: block !important;
+    background: transparent !important;
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+
+  #receiptModal > div {
+    max-height: none !important;
+    box-shadow: none !important;
+    border: none !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow: visible !important;
+  }
+
+  #printableReceiptCard {
+    box-shadow: none !important;
+    border: 1px solid #cbd5e1 !important;
+    margin: 0 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}
+

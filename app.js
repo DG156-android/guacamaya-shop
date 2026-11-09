@@ -217,6 +217,17 @@
     iconRefreshTrm: document.getElementById('iconRefreshTrm'),
     btnExportPdf: document.getElementById('btnExportPdf'),
     btnClearAll: document.getElementById('btnClearAll'),
+    receiptModal: document.getElementById('receiptModal'),
+    btnCloseReceiptModal: document.getElementById('btnCloseReceiptModal'),
+    btnModalDownloadPdf: document.getElementById('btnModalDownloadPdf'),
+    btnModalDownloadImage: document.getElementById('btnModalDownloadImage'),
+    btnModalPrint: document.getElementById('btnModalPrint'),
+    btnModalShareWhatsapp: document.getElementById('btnModalShareWhatsapp'),
+    receiptDateDisplay: document.getElementById('receiptDateDisplay'),
+    receiptTrmDisplay: document.getElementById('receiptTrmDisplay'),
+    receiptItemsBody: document.getElementById('receiptItemsBody'),
+    receiptTotalUsd: document.getElementById('receiptTotalUsd'),
+    receiptTotalCop: document.getElementById('receiptTotalCop'),
     toast: document.getElementById('toast'),
     toastMessage: document.getElementById('toastMessage')
   };
@@ -947,34 +958,116 @@
     showToast('🗑️ Toda la lista ha sido vaciada');
   }
 
-// --- 9. GENERACIÓN Y EXPORTACIÓN DE PDF MEJORADA ---
+  // --- 9. MODAL DE RECIBO DIGITAL (OPCIÓN 1) Y EXPORTACIÓN PDF / IMAGEN / WHATSAPP (OPCIÓN 2) ---
+
+  // Normaliza espacios estrechos no separables (\u202F / \u00A0) de Intl.NumberFormat para jsPDF
+  function sanitizePdfText(str) {
+    return String(str || '').replace(/[\u00A0\u202F\s]+/g, ' ').trim();
+  }
+
+  function openReceiptModal() {
+    if (!state.items.length) {
+      showToast('Agrega productos antes de exportar');
+      return;
+    }
+
+    const now = new Date();
+    const formattedDate = now.toLocaleDateString('es-CO', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+    const formattedTime = now.toLocaleTimeString('es-CO', {
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+
+    const { totalCop, totalUsd } = calculateTotals(state.items);
+
+    if (dom.receiptDateDisplay) {
+      dom.receiptDateDisplay.textContent = `Fecha: ${formattedDate}, ${formattedTime}`;
+    }
+    if (dom.receiptTrmDisplay) {
+      dom.receiptTrmDisplay.textContent = `TRM: ${copFormatter.format(state.trm)} COP`;
+    }
+    if (dom.receiptTotalCop) {
+      dom.receiptTotalCop.textContent = formatCOP(totalCop);
+    }
+    if (dom.receiptTotalUsd) {
+      dom.receiptTotalUsd.textContent = formatUSD(totalUsd);
+    }
+
+    if (dom.receiptItemsBody) {
+      dom.receiptItemsBody.innerHTML = state.items
+        .map((item) => {
+          const subtotal = item.price * item.qty;
+          const statusDot = item.bought
+            ? '<span class="inline-block w-2 h-2 rounded-full bg-[#2B9348] mr-1" title="Comprado"></span>'
+            : '<span class="inline-block w-2 h-2 rounded-full bg-slate-300 mr-1" title="Pendiente"></span>';
+          return `
+            <tr class="text-slate-700">
+              <td class="py-2 pr-2">
+                <div class="font-bold text-[#142433] leading-tight">
+                  ${statusDot}<span class="text-[#1D3B58]">[${escapeHtml(item.store)}]</span> ${escapeHtml(item.product)}
+                </div>
+                <div class="text-[11px] text-slate-400 pl-3">
+                  Unit: ${copFormatter.format(item.price)} ${item.bought ? '• Comprado' : ''}
+                </div>
+              </td>
+              <td class="py-2 px-2 text-center font-extrabold text-[#1D3B58]">${item.qty}</td>
+              <td class="py-2 pl-2 text-right font-extrabold text-[#142433] whitespace-nowrap">${copFormatter.format(subtotal)}</td>
+            </tr>
+          `;
+        })
+        .join('');
+    }
+
+    if (dom.receiptModal) {
+      dom.receiptModal.classList.remove('hidden');
+      dom.receiptModal.classList.add('flex');
+    }
+  }
+
+  function closeReceiptModal() {
+    if (dom.receiptModal) {
+      dom.receiptModal.classList.add('hidden');
+      dom.receiptModal.classList.remove('flex');
+    }
+  }
+
+  // Opción 2: Descarga / Compartir PDF con Base64 DataURI + doc.save() + Web Share API
   async function exportToPDF() {
     if (!state.items.length) {
       showToast('Agrega productos antes de exportar');
       return;
     }
 
-    showToast('Generando PDF...');
+    showToast('⏳ Generando archivo PDF...');
 
     try {
       const jspdfModule = window.jspdf ? window.jspdf.jsPDF : (window.jsPDF || null);
       if (!jspdfModule) {
-        showToast('Error: Librería jsPDF no disponible');
+        showToast('Usando impresora nativa como respaldo...');
+        window.print();
         return;
       }
 
       const doc = new jspdfModule({ orientation: 'portrait', unit: 'pt', format: 'a4' });
 
       const now = new Date();
-      const formattedDate = now.toLocaleDateString('es-CO', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-      });
-      const formattedTime = now.toLocaleTimeString('es-CO', {
-        hour: '2-digit',
-        minute: '2-digit'
-      });
+      const formattedDate = sanitizePdfText(
+        now.toLocaleDateString('es-CO', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric'
+        })
+      );
+      const formattedTime = sanitizePdfText(
+        now.toLocaleTimeString('es-CO', {
+          hour: '2-digit',
+          minute: '2-digit'
+        })
+      );
 
       const { totalCop, totalUsd } = calculateTotals(state.items);
 
@@ -982,24 +1075,28 @@
       doc.setFillColor(29, 59, 88);
       doc.rect(0, 0, doc.internal.pageSize.getWidth(), 85, 'F');
 
-      doc.setTextColor(255, 255, 255);
+      doc.setTextColor(255, 183, 3);
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(18);
-      doc.text('Guacamaya Shop — Resumen de Mercado', 40, 40);
+      doc.text('GUACAMAYA SHOP - RECIBO DE COMPRA', 40, 38);
 
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(10);
       doc.setTextColor(220, 235, 245);
-      doc.text(`Generado el: ${formattedDate} a las ${formattedTime}`, 40, 60);
-      doc.text(`Tasa TRM Aplicada: 1 USD = ${copFormatter.format(state.trm)} COP`, 40, 74);
+      doc.text(`Generado el: ${formattedDate} a las ${formattedTime}`, 40, 58);
+      doc.text(
+        sanitizePdfText(`Tasa TRM Aplicada: 1 USD = ${copFormatter.format(state.trm)} COP`),
+        40,
+        73
+      );
 
-      // Filas para la tabla
+      // Filas para la tabla (sanitizadas para evitar caracteres invisibles en jsPDF)
       const tableRows = state.items.map((item) => [
-        item.store,
-        `${item.product}${item.bought ? ' (Comprado)' : ''}`,
-        copFormatter.format(item.price),
+        sanitizePdfText(item.store),
+        sanitizePdfText(`${item.product}${item.bought ? ' (Comprado)' : ''}`),
+        sanitizePdfText(copFormatter.format(item.price)),
         String(item.qty),
-        copFormatter.format(item.price * item.qty)
+        sanitizePdfText(copFormatter.format(item.price * item.qty))
       ]);
 
       if (typeof doc.autoTable === 'function') {
@@ -1027,7 +1124,8 @@
         });
       }
 
-      const finalY = (doc.lastAutoTable && doc.lastAutoTable.finalY) ? doc.lastAutoTable.finalY + 20 : 200;
+      const finalY =
+        doc.lastAutoTable && doc.lastAutoTable.finalY ? doc.lastAutoTable.finalY + 20 : 200;
       const pageWidth = doc.internal.pageSize.getWidth();
 
       // Tarjeta de total general
@@ -1038,58 +1136,296 @@
       doc.setFontSize(11);
       doc.setTextColor(255, 183, 3);
       doc.text('TOTAL COP:', pageWidth - 245, finalY + 24);
-      doc.text(formatCOP(totalCop), pageWidth - 55, finalY + 24, { align: 'right' });
+      doc.text(sanitizePdfText(formatCOP(totalCop)), pageWidth - 55, finalY + 24, {
+        align: 'right'
+      });
 
       doc.setFontSize(11);
       doc.setTextColor(255, 255, 255);
       doc.text('TOTAL USD:', pageWidth - 245, finalY + 46);
-      doc.text(formatUSD(totalUsd), pageWidth - 55, finalY + 46, { align: 'right' });
+      doc.text(sanitizePdfText(formatUSD(totalUsd)), pageWidth - 55, finalY + 46, {
+        align: 'right'
+      });
 
       const fileName = `guacamaya-mercado-${now.toISOString().slice(0, 10)}.pdf`;
       const pdfBlob = doc.output('blob');
 
-      // --- ESTRATEGIA 1: Web Share API de Android ---
-      let fileShared = false;
+      // --- ESTRATEGIA 1: Web Share API nativa (Android / iOS) ---
       if (navigator.share && window.File) {
         try {
           const pdfFile = new File([pdfBlob], fileName, { type: 'application/pdf' });
           if (!navigator.canShare || navigator.canShare({ files: [pdfFile] })) {
             await navigator.share({
               files: [pdfFile],
-              title: 'Guacamaya Shop',
-              text: `Lista de compra (${formattedDate})`
+              title: 'Guacamaya Shop — Recibo de Compra',
+              text: `Resumen de mercado (${formattedDate}) - Total: ${sanitizePdfText(formatCOP(totalCop))}`
             });
-            fileShared = true;
             showToast('📄 PDF compartido con éxito');
             return;
           }
         } catch (shareErr) {
-          if (shareErr.name === 'AbortError') return; // Cancelado por el usuario
-          console.warn('Fallo en navigator.share, pasando a descarga directa:', shareErr);
+          if (shareErr && shareErr.name === 'AbortError') return;
+          console.warn('navigator.share no disponible para archivo PDF, usando descarga:', shareErr);
         }
       }
 
-      // --- ESTRATEGIA 2: Forzar Descarga Directa con Octet-Stream ---
-      // Usar octet-stream evita que el WebView de Android lo trate como una vista previa bloqueada
-      const blobUrl = URL.createObjectURL(new Blob([pdfBlob], { type: 'application/octet-stream' }));
+      // --- ESTRATEGIA 2: Descarga con Base64 Data URI + doc.save() ---
+      // En Android WebView / APK las URLs "blob:" suelen ser bloqueadas por DownloadListener,
+      // mientras que "data:application/pdf;base64,..." o doc.save() sí disparan la descarga.
+      try {
+        doc.save(fileName);
+      } catch (saveErr) {
+        console.warn('Fallo doc.save(), usando enlace Base64:', saveErr);
+      }
+
+      const base64DataUri = doc.output('datauristring');
       const downloadLink = document.createElement('a');
-      downloadLink.href = blobUrl;
+      downloadLink.href = base64DataUri;
       downloadLink.download = fileName;
       downloadLink.style.display = 'none';
       document.body.appendChild(downloadLink);
       downloadLink.click();
-      
+
       setTimeout(() => {
-        document.body.removeChild(downloadLink);
-        URL.revokeObjectURL(blobUrl);
-      }, 3000);
+        if (downloadLink.parentNode) {
+          document.body.removeChild(downloadLink);
+        }
+      }, 1500);
 
-      showToast('📄 PDF guardado en Descargas');
-
+      showToast('✅ PDF generado y descargado');
     } catch (err) {
       console.error('Error al generar PDF:', err);
-      showToast('Error al crear el archivo PDF');
+      showToast('Abriendo impresora/PDF del sistema...');
+      setTimeout(() => window.print(), 400);
     }
+  }
+
+  // Opción 1B: Generar y Guardar Recibo como Imagen PNG en Alta Resolución (100% compatible con APK/WebView y WhatsApp)
+  async function exportReceiptAsImage() {
+    if (!state.items.length) {
+      showToast('Agrega productos antes de exportar');
+      return;
+    }
+
+    showToast('🖼️ Generando imagen del recibo...');
+
+    try {
+      const scale = 2;
+      const width = 640;
+      const rowHeight = 46;
+      const headerHeight = 140;
+      const tableHeaderHeight = 42;
+      const footerHeight = 135;
+      const totalHeight = headerHeight + tableHeaderHeight + state.items.length * rowHeight + footerHeight;
+
+      const canvas = document.createElement('canvas');
+      canvas.width = width * scale;
+      canvas.height = totalHeight * scale;
+      const ctx = canvas.getContext('2d');
+      ctx.scale(scale, scale);
+
+      // Fondo general blanco
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillRect(0, 0, width, totalHeight);
+
+      // Cabecera Azul Marino (#1D3B58)
+      ctx.fillStyle = '#1D3B58';
+      ctx.fillRect(0, 0, width, headerHeight);
+
+      // Franja decorativa dorada (#FFB703)
+      ctx.fillStyle = '#FFB703';
+      ctx.fillRect(0, headerHeight - 5, width, 5);
+
+      // Textos de cabecera
+      ctx.fillStyle = '#FFB703';
+      ctx.font = 'bold 26px Nunito, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('GUACAMAYA SHOP', width / 2, 48);
+
+      ctx.fillStyle = '#E0F2FE';
+      ctx.font = 'bold 13px sans-serif';
+      ctx.fillText('RESUMEN DE COMPRA Y MERCADO', width / 2, 72);
+
+      const now = new Date();
+      const dateStr = now.toLocaleDateString('es-CO', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = '13px sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText(`Fecha: ${sanitizePdfText(dateStr)}`, 32, 114);
+
+      ctx.textAlign = 'right';
+      ctx.fillText(`TRM: ${sanitizePdfText(copFormatter.format(state.trm))} COP`, width - 32, 114);
+
+      // Encabezado de tabla
+      let currentY = headerHeight;
+      ctx.fillStyle = '#F4F8FA';
+      ctx.fillRect(0, currentY, width, tableHeaderHeight);
+
+      ctx.fillStyle = '#1D3B58';
+      ctx.font = 'bold 13px sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText('TIENDA / PRODUCTO', 32, currentY + 26);
+      ctx.textAlign = 'center';
+      ctx.fillText('CANT.', width - 175, currentY + 26);
+      ctx.textAlign = 'right';
+      ctx.fillText('SUBTOTAL', width - 32, currentY + 26);
+
+      currentY += tableHeaderHeight;
+
+      // Filas de productos
+      state.items.forEach((item, index) => {
+        if (index % 2 === 1) {
+          ctx.fillStyle = '#F9FBFD';
+          ctx.fillRect(0, currentY, width, rowHeight);
+        }
+
+        // Línea divisoria sutil
+        ctx.strokeStyle = '#E2E8F0';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(32, currentY + rowHeight);
+        ctx.lineTo(width - 32, currentY + rowHeight);
+        ctx.stroke();
+
+        // Indicador comprado/pendiente
+        ctx.fillStyle = item.bought ? '#2B9348' : '#94A3B8';
+        ctx.beginPath();
+        ctx.arc(40, currentY + 18, 4.5, 0, Math.PI * 2);
+        ctx.fill();
+
+        const titleText = `[${item.store}] ${item.product}`;
+        ctx.fillStyle = '#142433';
+        ctx.font = 'bold 14px sans-serif';
+        ctx.textAlign = 'left';
+        ctx.fillText(titleText.slice(0, 40), 52, currentY + 22);
+
+        ctx.fillStyle = '#64748B';
+        ctx.font = '11px sans-serif';
+        ctx.fillText(
+          `Unit: ${sanitizePdfText(copFormatter.format(item.price))}${item.bought ? ' • Comprado' : ''}`,
+          52,
+          currentY + 38
+        );
+
+        ctx.fillStyle = '#1D3B58';
+        ctx.font = 'bold 14px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(String(item.qty), width - 175, currentY + 28);
+
+        ctx.fillStyle = '#142433';
+        ctx.font = 'bold 14px sans-serif';
+        ctx.textAlign = 'right';
+        ctx.fillText(
+          sanitizePdfText(copFormatter.format(item.price * item.qty)),
+          width - 32,
+          currentY + 28
+        );
+
+        currentY += rowHeight;
+      });
+
+      // Caja inferior de totales
+      const { totalCop, totalUsd } = calculateTotals(state.items);
+      const boxY = currentY + 20;
+      ctx.fillStyle = '#1D3B58';
+      ctx.beginPath();
+      ctx.roundRect(32, boxY, width - 64, 86, 16);
+      ctx.fill();
+
+      ctx.fillStyle = '#BFD7EA';
+      ctx.font = 'bold 12px sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText('CONVERSIÓN USD', 54, boxY + 32);
+
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = 'bold 20px sans-serif';
+      ctx.fillText(sanitizePdfText(formatUSD(totalUsd)), 54, boxY + 62);
+
+      ctx.fillStyle = '#BFD7EA';
+      ctx.font = 'bold 12px sans-serif';
+      ctx.textAlign = 'right';
+      ctx.fillText('TOTAL A PAGAR (COP)', width - 54, boxY + 32);
+
+      ctx.fillStyle = '#FFB703';
+      ctx.font = 'bold 24px sans-serif';
+      ctx.fillText(sanitizePdfText(formatCOP(totalCop)), width - 54, boxY + 64);
+
+      const fileName = `guacamaya-recibo-${now.toISOString().slice(0, 10)}.png`;
+      const dataUrl = canvas.toDataURL('image/png');
+
+      // Intentar compartir imagen con Web Share API si está en móvil
+      if (navigator.share && window.File) {
+        try {
+          const res = await fetch(dataUrl);
+          const blob = await res.blob();
+          const imageFile = new File([blob], fileName, { type: 'image/png' });
+          if (!navigator.canShare || navigator.canShare({ files: [imageFile] })) {
+            await navigator.share({
+              files: [imageFile],
+              title: 'Recibo Guacamaya Shop',
+              text: `Total: ${sanitizePdfText(formatCOP(totalCop))} (${sanitizePdfText(formatUSD(totalUsd))})`
+            });
+            showToast('🖼️ Imagen del recibo compartida');
+            return;
+          }
+        } catch (shareErr) {
+          if (shareErr && shareErr.name === 'AbortError') return;
+        }
+      }
+
+      // Descarga directa como PNG mediante DataURL
+      const link = document.createElement('a');
+      link.href = dataUrl;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      setTimeout(() => {
+        if (link.parentNode) document.body.removeChild(link);
+      }, 1000);
+
+      showToast('🖼️ Imagen guardada en tu dispositivo');
+    } catch (err) {
+      console.error('Error generando imagen del recibo:', err);
+      showToast('No se pudo generar la imagen');
+    }
+  }
+
+  // Opción 1C: Enviar Resumen Formateado por WhatsApp / Compartir Texto
+  async function shareViaWhatsapp() {
+    if (!state.items.length) {
+      showToast('Agrega productos antes de compartir');
+      return;
+    }
+
+    const { totalCop, totalUsd } = calculateTotals(state.items);
+    const now = new Date().toLocaleDateString('es-CO');
+
+    const lines = [
+      `🦜 *GUACAMAYA SHOP — LISTA DE MERCADO* (${now})`,
+      `💱 *TRM:* ${sanitizePdfText(copFormatter.format(state.trm))} COP`,
+      `────────────────────`
+    ];
+
+    state.items.forEach((item) => {
+      const check = item.bought ? '✅' : '🛒';
+      const sub = sanitizePdfText(copFormatter.format(item.price * item.qty));
+      lines.push(`${check} *[${item.store}]* ${item.product} (x${item.qty}) — ${sub}`);
+    });
+
+    lines.push(`────────────────────`);
+    lines.push(`💰 *TOTAL COP:* ${sanitizePdfText(formatCOP(totalCop))}`);
+    lines.push(`💵 *TOTAL USD:* ${sanitizePdfText(formatUSD(totalUsd))}`);
+
+    const messageText = lines.join('\n');
+    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(messageText)}`;
+    window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
   }
 
   // --- Registro de Eventos ---
@@ -1328,8 +1664,18 @@
     }
 
     if (dom.btnRefreshTrm) dom.btnRefreshTrm.addEventListener('click', () => fetchExchangeRate(true));
-    if (dom.btnExportPdf) dom.btnExportPdf.addEventListener('click', exportToPDF);
-    if (dom.btnBottomExportPdf) dom.btnBottomExportPdf.addEventListener('click', exportToPDF);
+    if (dom.btnExportPdf) dom.btnExportPdf.addEventListener('click', openReceiptModal);
+    if (dom.btnBottomExportPdf) dom.btnBottomExportPdf.addEventListener('click', openReceiptModal);
+    if (dom.btnCloseReceiptModal) dom.btnCloseReceiptModal.addEventListener('click', closeReceiptModal);
+    if (dom.receiptModal) {
+      dom.receiptModal.addEventListener('click', (e) => {
+        if (e.target === dom.receiptModal) closeReceiptModal();
+      });
+    }
+    if (dom.btnModalDownloadPdf) dom.btnModalDownloadPdf.addEventListener('click', exportToPDF);
+    if (dom.btnModalDownloadImage) dom.btnModalDownloadImage.addEventListener('click', exportReceiptAsImage);
+    if (dom.btnModalPrint) dom.btnModalPrint.addEventListener('click', () => window.print());
+    if (dom.btnModalShareWhatsapp) dom.btnModalShareWhatsapp.addEventListener('click', shareViaWhatsapp);
     if (dom.btnClearAll) dom.btnClearAll.addEventListener('click', clearAllItems);
     if (dom.btnBottomClearAll) dom.btnBottomClearAll.addEventListener('click', clearAllItems);
   }

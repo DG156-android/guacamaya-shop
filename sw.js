@@ -1,5 +1,5 @@
 // Nombre de la versión (actualizado para invalidar la anterior)
-const CACHE_NAME = 'guacamaya-shop-v9';
+const CACHE_NAME = 'guacamaya-shop-v10';
 
 // Archivos locales que se guardan en el teléfono para funcionar offline
 const ASSETS_TO_CACHE = [
